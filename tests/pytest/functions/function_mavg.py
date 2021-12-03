@@ -186,11 +186,29 @@ class TDTestCase:
                 ))
             pass
 
+        if "group" in condition.lower():
+            if all( ["slimit" not in condition.lower(), "soffset" in condition.lower()] ):
+                print(f"case in {line}: ", end='')
+                return tdSql.error(self.mavg_query_form(
+                    sel=sel, func=func, col=col, m_comm=m_comm, k=k, r_comm=r_comm, alias=alias, fr=fr,
+                    table_expr=table_expr, condition=condition
+                ))
+            pass
+
+        if "group" not in condition.lower():
+            if any( ["slimit" in condition.lower(), "soffset" in condition.lower()] ):
+                print(f"case in {line}: ", end='')
+                return tdSql.error(self.mavg_query_form(
+                    sel=sel, func=func, col=col, m_comm=m_comm, k=k, r_comm=r_comm, alias=alias, fr=fr,
+                    table_expr=table_expr, condition=condition
+                ))
+            pass
+
         condition_exception = [ "-", "+", "/", "*", "~", "^", "insert", "distinct",
                            "count", "avg", "twa", "irate", "sum", "stddev", "leastquares",
                            "min", "max", "first", "last", "top", "bottom", "percentile",
                            "apercentile", "last_row", "interp", "diff", "derivative",
-                           "spread", "ceil", "floor", "round", "interval", "fill", "slimit", "soffset"]
+                           "spread", "ceil", "floor", "round", "interval", "fill"]
         if "union" not in condition.lower():
             if any(parm in condition.lower().strip() for parm in condition_exception):
 
@@ -229,8 +247,18 @@ class TDTestCase:
             return
 
         if "group" in condition:
-            tb_condition = condition.split("group by")[1].split(" ")[1]
-            tdSql.query(f"select distinct {tb_condition} from {table_expr}")
+            tb_condition = condition.split("group by")[1].strip().split(" ")[0]
+            if  all( ["slimit"  not in condition.lower(), "soffset" not in condition.lower()] ):
+                table_sql = f"select distinct {tb_condition} from {table_expr}"
+            else:
+                tb_condition_limit = condition.split("slimit")[1].strip().split(" ")[0]
+                if all( ["slimit" in condition.lower(), "soffset" not in condition.lower()] ):
+                    table_sql = f"select distinct {tb_condition} from {table_expr} limit {tb_condition_limit}"
+                else:
+                    tb_condition_offset = condition.split("soffset")[1].strip().split(" ")[0]
+                    table_sql = f"select distinct {tb_condition} from {table_expr} limit {tb_condition_limit} offset {tb_condition_offset}"
+
+            tdSql.query(table_sql)
             query_result = tdSql.queryResult
             query_rows = tdSql.queryRows
             clear_condition = re.sub('order by [0-9a-z]*|slimit [0-9]*|soffset [0-9]*', "", condition)
@@ -501,12 +529,12 @@ class TDTestCase:
             "table_expr": "stb1",
             "condition": "group by tbname slimit 1 "
         }
-        # self.checkmavg(**err47)         # with slimit
+        self.checkmavg(**err47)         # with slimit
         err48 = {
             "table_expr": "stb1",
             "condition": "group by tbname slimit 1 soffset 1"
         }
-        # self.checkmavg(**err48)         # with soffset
+        self.checkmavg(**err48)         # with soffset
         err49 = {"k": "2021-01-01 00:00:00.000"}
         self.checkmavg(**err49)         # k: timestamp
         err50 = {"k": False}

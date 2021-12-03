@@ -66,9 +66,18 @@ class TDTestCase:
             return
 
         if "group" in condition:
+            tb_condition = condition.split("group by")[1].strip().split(" ")[0]
+            if  all( ["slimit"  not in condition.lower(), "soffset" not in condition.lower()] ):
+                table_sql = f"select distinct {tb_condition} from {table_expr}"
+            else:
+                tb_condition_limit = condition.split("slimit")[1].strip().split(" ")[0]
+                if all( ["slimit" in condition.lower(), "soffset" not in condition.lower()] ):
+                    table_sql = f"select distinct {tb_condition} from {table_expr} limit {tb_condition_limit}"
+                else:
+                    tb_condition_offset = condition.split("soffset")[1].strip().split(" ")[0]
+                    table_sql = f"select distinct {tb_condition} from {table_expr} limit {tb_condition_limit} offset {tb_condition_offset}"
 
-            tb_condition = condition.split("group by")[1].split(" ")[1]
-            tdSql.query(f"select distinct {tb_condition} from {table_expr}")
+            tdSql.query(table_sql)
             query_result = tdSql.queryResult
             query_rows = tdSql.queryRows
             clear_condition = re.sub('order by [0-9a-z]*|slimit [0-9]*|soffset [0-9]*', "", condition)
